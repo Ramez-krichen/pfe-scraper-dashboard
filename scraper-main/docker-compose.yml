@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: scraper-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: scraper-prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    volumes:
+      - prometheus_data:/prometheus
+    # Note: Requires a prometheus.yml config mounted here for custom scrape targets
+
+  # The scraper worker node
+  # To scale this out horizontally on a single machine: docker-compose up --scale worker=3
+  worker:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+    restart: unless-stopped
+    # Use shm_size to prevent Chrome from crashing on memory limits
+    shm_size: '2gb'
+
+volumes:
+  redis_data:
+  prometheus_data:

@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # 1. Scraper Storage (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: competitive-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass 12345678
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  # 2. Dashboard Storage (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: competitive-postgres
+    environment:
+      - POSTGRES_PASSWORD=12345678
+      - POSTGRES_DB=competitive_intel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./interface/schema/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  # 3. Scraper Ingestion API (FastAPI)
+  scraper-api:
+    build:
+      context: ./scraper-main
+      dockerfile: Dockerfile
+    container_name: competitive-scraper-api
+    depends_on:
+      - redis
+    ports:
+      - "8000:8000"
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    environment:
+      - REDIS_HOST=redis
+    restart: unless-stopped
+
+  # 4. Scraper Worker (The Crawler)
+  scraper-worker:
+    build:
+      context: ./scraper-main
+      dockerfile: Dockerfile
+    container_name: competitive-scraper-worker
+    depends_on:
+      - redis
+      - scraper-api
+    environment:
+      - REDIS_HOST=redis
+    # We use the default CMD in Dockerfile which is "python main.py"
+    restart: unless-stopped
+    shm_size: '2gb' # Required for Chrome in Docker
+
+  # 5. Dashboard (Next.js) - Optional to run in Docker, but included for completeness
+  # dashboard:
+  #   build:
+  #     context: ./interface/dashboard
+  #   container_name: competitive-dashboard
+  #   depends_on:
+  #     - postgres
+  #     - scraper-api
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgresql://postgres:12345678@postgres:5432/competitive_intel
+  #     - SCRAPER_API_URL=http://scraper-api:8000
+  #     - N8N_WEBHOOK_URL=http://host.docker.internal:5678/webhook-test/competitive-analysis
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:

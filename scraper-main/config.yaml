@@ -1,0 +1,37 @@
+redis:
+  host: localhost
+  port: 6379
+  password: "12345678"
+  db: 0
+  job_queue: "scraper:jobs:pending"
+  working_queue: "scraper:jobs:working"
+  dead_letter_queue: "scraper:jobs:dlq"
+  max_retries: 3
+  timeout_seconds: 300 # Job visibility timeout
+
+worker:
+  concurrency: 2
+  max_pages_per_browser: 5
+  max_memory_mb: 2000
+  heartbeat_interval_sec: 15
+  retry_backoff_sec: 10
+
+frontier:
+  retry_delay_seconds: 30
+  retry_backoff_multiplier: 2.0
+  max_retry_delay_seconds: 300
+  retry_promotion_batch_size: 100
+
+browser:
+  headless: true
+  locale: "fr-TN"
+  user_data_dir: null
+  disable_images: true
+  proxy: null # "http://user:pass@host:port"
+
+webhook:
+  crawl_result_url: http://localhost:5678/webhook-test/crawl_result # "https://your-n8n-instance/webhook/scrape-result"
+  product_list_scrape_result_url: http://localhost:5678/webhook-test/product_list_scrape_result # "https://your-n8n-instance/webhook/scrape-result"
+  product_scrape_result_url: http://localhost:5678/webhook-test/product_scrape_result # "https://your-n8n-instance/webhook/scrape-result"
+  content_scrape_result_url: http://localhost:5678/webhook-test/content_scrape_result # "https://your-n8n-instance/webhook/scrape-result"
+  timeout_seconds: 10
